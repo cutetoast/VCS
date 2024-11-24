@@ -28,9 +28,7 @@ confidence_threshold = 0.5
 class_names = ["Bus", "Car", "Motorcycle", "Truck", "Van"]
 class_counters = {class_name: 0 for class_name in class_names}
 tracked_objects = {}
-latest_video_path = None
 connected_websockets = set()
-
 
 def reset_counters():
     """Reset all counters and tracked objects."""
@@ -154,7 +152,18 @@ async def process_video(video: UploadFile = File(...)):
         temp_video.write(await video.read())
         latest_video_path = temp_video.name
 
-    return {"video_url": latest_video_path, "stats": class_counters}
+    return {"video_url": latest_video_path}
+
+@app.get("/final-stats/")
+async def get_final_stats():
+    """Return the final vehicle counts for each class."""
+    global class_counters
+    final_counts = {
+        "classCounters": class_counters,
+        "heavyVehicles": class_counters["Bus"] + class_counters["Truck"],
+        "lightVehicles": class_counters["Car"] + class_counters["Motorcycle"] + class_counters["Van"]
+    }
+    return {"stats": final_counts}
 
 
 @app.get("/stream-video/")

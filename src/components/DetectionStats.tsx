@@ -1,4 +1,3 @@
-import React from 'react';
 import { FaCar, FaTruck, FaBus, FaMotorcycle, FaShuttleVan } from 'react-icons/fa';
 
 const DetectionStats = ({ data }: { data: any }) => {

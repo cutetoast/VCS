@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 import { getAuth } from 'firebase/auth';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, where, query, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import DetectionStats from '../components/DetectionStats';
 
@@ -16,30 +16,64 @@ const Dashboard = () => {
   const [detectionData, setDetectionData] = useState<any>(null);
 
   const auth = getAuth();
-
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8000/ws'); // Replace with your backend WebSocket URL
+    const ws = new WebSocket('ws://localhost:8000/ws'); // Replace with your WebSocket endpoint
 
     ws.onopen = () => {
-      console.log('WebSocket connection established.');
+        console.log('WebSocket connection established.');
     };
 
-    ws.onmessage = (event) => {
+    ws.onmessage = async (event) => {
       const updatedStats = JSON.parse(event.data);
-      console.log('WebSocket message received:', updatedStats);
+      console.log("WebSocket message received:", updatedStats);
+  
       setDetectionData(updatedStats);
-    };
+  
+      try {
+          const user = auth.currentUser;
+          if (!user) {
+              console.error("User is not authenticated.");
+              return;
+          }
+  
+          // Reference Firestore collection
+          const detectionsRef = collection(db, "detections");
+  
+          // Check if document exists
+          const querySnapshot = await getDocs(query(detectionsRef, where("roadName", "==", roadName)));
+  
+          if (!querySnapshot.empty) {
+              const docId = querySnapshot.docs[0].id;
+              await updateDoc(doc(detectionsRef, docId), {
+                  timestamp: new Date().toISOString(),
+                  stats: updatedStats.classCounters
+              });
+              console.log("Stats updated in Firestore.");
+          } else {
+              await addDoc(detectionsRef, {
+                  roadName,
+                  userId: user.uid, // Include userId
+                  timestamp: new Date().toISOString(),
+                  stats: updatedStats.classCounters
+              });
+              console.log("Stats saved to Firestore.");
+          }
+      } catch (error) {
+          console.error("Error saving/updating stats to Firestore:", error);
+      }
+  
+  };
 
     ws.onclose = () => {
-      console.log('WebSocket connection closed.');
+        console.log('WebSocket connection closed.');
     };
 
     ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
+        console.error('WebSocket error:', error);
     };
 
-    return () => ws.close();
-  }, []);
+    return () => ws.close(); // Cleanup WebSocket on component unmount
+}, [roadName]); // Add `roadName` as a dependency
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: { 'video/*': ['.mp4', '.avi', '.mov'] },
@@ -52,8 +86,8 @@ const Dashboard = () => {
   
       const trimmedRoadName = roadName.trim();
       if (!trimmedRoadName) {
-        setError('Please enter a road name before uploading.');
-        return;
+          setError('Please enter a road name before uploading.');
+          return;
       }
   
       const file = acceptedFiles[0];
@@ -61,37 +95,39 @@ const Dashboard = () => {
       formData.append('video', file);
   
       try {
-        setIsProcessing(true);
+          setIsProcessing(true);
   
-        // Call the backend `/process-video/` endpoint
-        const response = await axios.post('http://localhost:8000/process-video/', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
+          // Call the backend `/process-video/` endpoint
+          const response = await axios.post('http://localhost:8000/process-video/', formData, {
+              headers: { 'Content-Type': 'multipart/form-data' },
+          });
   
-        const { video_url, stats } = response.data; // Extract stats and video_url
-        if (!video_url || !stats) throw new Error('Invalid response from server.');
+          const { video_url } = response.data;
+          if (!video_url) throw new Error('Invalid response from server.');
+          setVideoStreamUrl(`http://localhost:8000/stream-video?video_url=${encodeURIComponent(video_url)}`);
   
-        // Update frontend state with video URL and detection stats
-        setVideoStreamUrl(`http://localhost:8000/stream-video?video_url=${encodeURIComponent(video_url)}`);
-        setDetectionData(stats); // Update stats in the state for display
+          // Fetch final stats after video processing
+          const statsResponse = await axios.get('http://localhost:8000/final-stats/');
+          const stats = statsResponse.data.stats;
   
-        // Save stats to Firestore
-        const user = auth.currentUser;
-        await addDoc(collection(db, 'detections'), {
-          roadName: trimmedRoadName,
-          userId: user?.uid || 'anonymous',
-          timestamp: new Date().toISOString(),
-          stats, // Save the detection stats
-        });
+          // Save stats to Firestore
+          //const user = auth.currentUser;
+         // await addDoc(collection(db, 'detections'), {
+            //  roadName: trimmedRoadName,
+            //  userId: user?.uid || 'anonymous',
+             // timestamp: new Date().toISOString(),
+             // stats, // Save the updated stats
+        //  });
   
-        setSuccess('Video processed and detection results saved successfully.');
+          setDetectionData(stats); // Update stats in the state for display
+          setSuccess('Video processed and detection results saved successfully.');
       } catch (err) {
-        console.error('Error uploading video:', err?.message || err);
-        setError('Failed to upload or process the video. Please try again.');
+          console.error('Error uploading video:', err?.message || err);
+          setError('Failed to upload or process the video. Please try again.');
       } finally {
-        setIsProcessing(false);
+          setIsProcessing(false);
       }
-    },
+  },
   });
 
   return (
