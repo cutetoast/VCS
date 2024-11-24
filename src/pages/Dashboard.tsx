@@ -3,7 +3,7 @@ import { useDropzone } from 'react-dropzone';
 import { Upload, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 import { getAuth } from 'firebase/auth';
-import { collection, addDoc, doc, updateDoc, where, query, getDocs } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, where, query, getDocs, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import DetectionStats from '../components/DetectionStats';
 
@@ -25,43 +25,39 @@ const Dashboard = () => {
 
     ws.onmessage = async (event) => {
       const updatedStats = JSON.parse(event.data);
-      console.log("WebSocket message received:", updatedStats);
+      console.log('WebSocket message received:', updatedStats);
   
       setDetectionData(updatedStats);
   
       try {
           const user = auth.currentUser;
-          if (!user) {
-              console.error("User is not authenticated.");
-              return;
-          }
+          const detectionsRef = doc(db, 'detections', roadName); // Use roadName as the document ID
   
-          // Reference Firestore collection
-          const detectionsRef = collection(db, "detections");
-  
-          // Check if document exists
-          const querySnapshot = await getDocs(query(detectionsRef, where("roadName", "==", roadName)));
-  
-          if (!querySnapshot.empty) {
-              const docId = querySnapshot.docs[0].id;
-              await updateDoc(doc(detectionsRef, docId), {
+          // Try updating the document
+          try {
+              await updateDoc(detectionsRef, {
+                  userId: user?.uid || 'anonymous',
                   timestamp: new Date().toISOString(),
-                  stats: updatedStats.classCounters
+                  stats: updatedStats.classCounters // Update stats dynamically
               });
-              console.log("Stats updated in Firestore.");
-          } else {
-              await addDoc(detectionsRef, {
-                  roadName,
-                  userId: user.uid, // Include userId
-                  timestamp: new Date().toISOString(),
-                  stats: updatedStats.classCounters
-              });
-              console.log("Stats saved to Firestore.");
+              console.log('Stats updated in Firestore.');
+          } catch (updateError) {
+              if (updateError.code === 'not-found') {
+                  // If document does not exist, create a new one
+                  await setDoc(detectionsRef, {
+                      roadName,
+                      userId: user?.uid || 'anonymous',
+                      timestamp: new Date().toISOString(),
+                      stats: updatedStats.classCounters
+                  });
+                  console.log('Stats saved to Firestore.');
+              } else {
+                  console.error('Error updating Firestore document:', updateError);
+              }
           }
       } catch (error) {
-          console.error("Error saving/updating stats to Firestore:", error);
+          console.error('Error saving/updating stats to Firestore:', error);
       }
-  
   };
 
     ws.onclose = () => {
