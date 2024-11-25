@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 import { getAuth } from 'firebase/auth';
-import { collection, addDoc, doc, updateDoc, where, query, getDocs, setDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import DetectionStats from '../components/DetectionStats';
 
@@ -16,121 +16,102 @@ const Dashboard = () => {
   const [detectionData, setDetectionData] = useState<any>(null);
 
   const auth = getAuth();
-  useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8000/ws'); // Replace with your WebSocket endpoint
 
-    ws.onopen = () => {
-        console.log('WebSocket connection established.');
-    };
+  useEffect(() => {
+    const ws = new WebSocket('ws://localhost:8000/ws');
+
+    ws.onopen = () => console.log('WebSocket connection established.');
 
     ws.onmessage = async (event) => {
-      const updatedStats = JSON.parse(event.data);
-      console.log('WebSocket message received:', updatedStats);
-  
-      setDetectionData(updatedStats);
-  
       try {
-          const user = auth.currentUser;
-          const detectionsRef = doc(db, 'detections', roadName); // Use roadName as the document ID
-  
-          // Try updating the document
-          try {
-              await updateDoc(detectionsRef, {
-                  userId: user?.uid || 'anonymous',
-                  timestamp: new Date().toISOString(),
-                  stats: updatedStats.classCounters // Update stats dynamically
-              });
-              console.log('Stats updated in Firestore.');
-          } catch (updateError) {
-              if (updateError.code === 'not-found') {
-                  // If document does not exist, create a new one
-                  await setDoc(detectionsRef, {
-                      roadName,
-                      userId: user?.uid || 'anonymous',
-                      timestamp: new Date().toISOString(),
-                      stats: updatedStats.classCounters
-                  });
-                  console.log('Stats saved to Firestore.');
-              } else {
-                  console.error('Error updating Firestore document:', updateError);
-              }
+        const updatedStats = JSON.parse(event.data);
+        console.log('WebSocket message received:', updatedStats);
+        setDetectionData(updatedStats);
+
+        const user = auth.currentUser;
+        const detectionsRef = doc(db, 'detections', roadName);
+
+        try {
+          await updateDoc(detectionsRef, {
+            userId: user?.uid || 'anonymous',
+            timestamp: new Date().toISOString(),
+            stats: updatedStats.classCounters,
+          });
+        } catch (updateError) {
+          if (updateError.code === 'not-found') {
+            await setDoc(detectionsRef, {
+              roadName,
+              userId: user?.uid || 'anonymous',
+              timestamp: new Date().toISOString(),
+              stats: updatedStats.classCounters,
+            });
+          } else {
+            console.error('Error updating Firestore document:', updateError);
           }
-      } catch (error) {
-          console.error('Error saving/updating stats to Firestore:', error);
+        }
+      } catch (err) {
+        console.error('Error parsing WebSocket message or saving stats:', err);
       }
-  };
-
-    ws.onclose = () => {
-        console.log('WebSocket connection closed.');
     };
 
-    ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-    };
+    ws.onclose = () => console.log('WebSocket connection closed.');
+    ws.onerror = (wsError) => console.error('WebSocket error:', wsError);
 
-    return () => ws.close(); // Cleanup WebSocket on component unmount
-}, [roadName]); // Add `roadName` as a dependency
+    return () => ws.close();
+  }, [roadName, auth]);
+
+  const handleRoadNameChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    setRoadName(event.target.value);
+    setError(null); // Clear error on change
+  }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: { 'video/*': ['.mp4', '.avi', '.mov'] },
     maxFiles: 1,
     onDrop: async (acceptedFiles) => {
       if (isProcessing) return;
-  
+
       setError(null);
       setSuccess(null);
-  
-      const trimmedRoadName = roadName.trim();
-      if (!trimmedRoadName) {
-          setError('Please enter a road name before uploading.');
-          return;
+
+      if (!roadName.trim()) {
+        setError('Please enter a road name before uploading.');
+        return;
       }
-  
+
       const file = acceptedFiles[0];
       const formData = new FormData();
       formData.append('video', file);
-  
+
       try {
-          setIsProcessing(true);
-  
-          // Call the backend `/process-video/` endpoint
-          const response = await axios.post('http://localhost:8000/process-video/', formData, {
-              headers: { 'Content-Type': 'multipart/form-data' },
-          });
-  
-          const { video_url } = response.data;
-          if (!video_url) throw new Error('Invalid response from server.');
-          setVideoStreamUrl(`http://localhost:8000/stream-video?video_url=${encodeURIComponent(video_url)}`);
-  
-          // Fetch final stats after video processing
-          const statsResponse = await axios.get('http://localhost:8000/final-stats/');
-          const stats = statsResponse.data.stats;
-  
-          // Save stats to Firestore
-          //const user = auth.currentUser;
-         // await addDoc(collection(db, 'detections'), {
-            //  roadName: trimmedRoadName,
-            //  userId: user?.uid || 'anonymous',
-             // timestamp: new Date().toISOString(),
-             // stats, // Save the updated stats
-        //  });
-  
-          setDetectionData(stats); // Update stats in the state for display
-          setSuccess('Video processed and detection results saved successfully.');
+        setIsProcessing(true);
+
+        const response = await axios.post('http://localhost:8000/process-video/', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+
+        const { video_url } = response.data;
+        if (!video_url) throw new Error('Invalid server response.');
+        setVideoStreamUrl(`http://localhost:8000/stream-video?video_url=${encodeURIComponent(video_url)}`);
+
+        const statsResponse = await axios.get('http://localhost:8000/final-stats/');
+        setDetectionData(statsResponse.data.stats);
+
+        setSuccess('Video processed and detection results saved successfully.');
       } catch (err) {
-          console.error('Error uploading video:', err?.message || err);
-          setError('Failed to upload or process the video. Please try again.');
+        console.error('Error processing video:', err);
+        setError('Failed to upload or process the video. Please try again.');
       } finally {
-          setIsProcessing(false);
+        setIsProcessing(false);
       }
-  },
+    },
   });
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 npmgap-8 p-8">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 p-8">
       {/* Video Analysis Section */}
-      <div className="col-span-2 bg-white rounded-lg shadow-md p-4">
-        <h2 className="text-lg font-semibold mb-4">Video Analysis</h2>
+      <div className="col-span-2 bg-white rounded-lg shadow-md p-6">
+        <h2 className="text-xl font-semibold mb-4">Video Analysis</h2>
         <div className="mb-4">
           <label htmlFor="road-name" className="block text-sm font-medium text-gray-700">
             Road Name
@@ -139,9 +120,10 @@ const Dashboard = () => {
             id="road-name"
             type="text"
             value={roadName}
-            onChange={(e) => setRoadName(e.target.value)}
-            className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"
+            onChange={handleRoadNameChange}
+            className="mt-1 block w-full p-3 border border-gray-300 rounded-md shadow-sm"
             placeholder="Enter road name"
+            aria-label="Road name"
           />
         </div>
         <div
@@ -159,11 +141,7 @@ const Dashboard = () => {
             </div>
           ) : (
             <div className="relative aspect-video bg-black rounded-lg overflow-hidden">
-              <img
-                src={videoStreamUrl}
-                alt="Processed video stream"
-                className="w-full h-full object-cover"
-              />
+              <img src={videoStreamUrl} alt="Processed video stream" className="w-full h-full object-cover" />
             </div>
           )}
         </div>
@@ -174,9 +152,7 @@ const Dashboard = () => {
           </div>
         )}
         {success && (
-          <div className="mt-4 p-3 bg-green-50 text-green-600 rounded-md">
-            {success}
-          </div>
+          <div className="mt-4 p-3 bg-green-50 text-green-600 rounded-md">{success}</div>
         )}
         {isProcessing && (
           <div className="mt-6 text-sm text-gray-700">
@@ -185,7 +161,7 @@ const Dashboard = () => {
         )}
       </div>
 
-      {/* Vehicle Detection Results Section */}
+      {/* Detection Results Section */}
       <div className="bg-white rounded-lg shadow-md p-6">
         <DetectionStats data={detectionData} />
       </div>

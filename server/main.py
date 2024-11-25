@@ -20,7 +20,7 @@ app.add_middleware(
 )
 
 # Load YOLO model
-model = YOLO("server/best.pt")
+model = YOLO("server/yolo_model/best.pt")
 
 # Constants and global variables
 line_position = 400  # Line for counting
