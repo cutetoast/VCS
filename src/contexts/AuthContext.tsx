@@ -1,14 +1,17 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
   updateProfile as updateFirebaseProfile,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+  updatePassword,
   User as FirebaseUser,
-  onAuthStateChanged
+  onAuthStateChanged,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
+import { createContext, useContext, useEffect, useState } from 'react';
 
 interface User {
   uid: string;
@@ -23,6 +26,7 @@ interface AuthContextType {
   signup: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (data: { name?: string; email?: string }) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>; // Added
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -45,7 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (firebaseUser) {
           const userDocRef = doc(db, 'users', firebaseUser.uid);
           const userDoc = await getDoc(userDocRef);
-          
+
           if (!userDoc.exists()) {
             // Create user document if it doesn't exist
             await setDoc(userDocRef, {
@@ -54,7 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               createdAt: new Date().toISOString(),
             });
           }
-          
+
           const userData = userDoc.data();
           setUser({
             uid: firebaseUser.uid,
@@ -78,10 +82,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signup = async (email: string, password: string, name: string) => {
     try {
       const { user: firebaseUser } = await createUserWithEmailAndPassword(auth, email, password);
-      
+
       // Update Firebase Auth profile
       await updateFirebaseProfile(firebaseUser, { displayName: name });
-      
+
       // Create user document in Firestore
       await setDoc(doc(db, 'users', firebaseUser.uid), {
         email,
@@ -136,19 +140,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (data.name) {
         await updateFirebaseProfile(auth.currentUser as FirebaseUser, {
-          displayName: data.name
+          displayName: data.name,
         });
       }
 
-      setUser(prev => prev ? { ...prev, ...data } : null);
+      setUser((prev) => (prev ? { ...prev, ...data } : null));
     } catch (error: any) {
       console.error('Profile update error:', error);
       throw new Error(error.message);
     }
   };
 
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    if (!auth.currentUser || !auth.currentUser.email) {
+      throw new Error('No user is logged in or email is missing.');
+    }
+
+    const credential = EmailAuthProvider.credential(auth.currentUser.email, currentPassword);
+
+    try {
+      // Reauthenticate the user
+      await reauthenticateWithCredential(auth.currentUser, credential);
+
+      // Update the password
+      await updatePassword(auth.currentUser, newPassword);
+    } catch (error: any) {
+      console.error('Password change failed:', error);
+      throw new Error('Failed to change password. Please try again.');
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout, updateProfile }}>
+    <AuthContext.Provider
+      value={{ user, loading, login, signup, logout, updateProfile, changePassword }}
+    >
       {children}
     </AuthContext.Provider>
   );

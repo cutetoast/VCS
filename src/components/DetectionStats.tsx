@@ -14,38 +14,48 @@ const DetectionStats = ({ data }: { data: any }) => {
   ];
 
   return (
-    <div className="mt-4 p-6 bg-white rounded-lg shadow">
-      <h2 className="text-xl font-semibold mb-6 text-center">Vehicle Detection Results</h2>
+    <div className="bg-white rounded-xl p-6 shadow-sm">
+        <h2 className="text-xl font-semibold mb-6">Vehicle Detection Results</h2>
 
       {/* Display individual vehicle counts */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
         {vehicleTypes.map((vehicle) => (
           <div
             key={vehicle.label}
-            className="flex flex-col items-center justify-center bg-gray-50 p-4 rounded-lg shadow hover:shadow-md"
+          className="bg-white rounded-xl p-4 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_15px_-3px_rgba(0,0,0,0.1),0_10px_20px_-2px_rgba(0,0,0,0.06)] transition-shadow duration-300 ease-in-out"
+          style={{ backgroundColor: 'white' }}
           >
-            <div className="text-3xl mb-2">{vehicle.icon}</div>
+          <div className="flex items-center justify-between">
+            <div>
             <p className="text-sm font-medium">{vehicle.label}</p>
             <p className="text-xl font-bold">{vehicle.count}</p>
+            </div>
+            <div className="text-3xl mb-2">{vehicle.icon}</div>
           </div>
+        </div>
         ))}
       </div>
 
       {/* Display heavy and light vehicle totals */}
-      <div className="mt-6 grid grid-cols-2 gap-4">
-        <div className="flex flex-col items-center justify-center bg-red-100 p-4 rounded-lg shadow hover:shadow-md">
-          <div className="text-3xl text-red-500 mb-2">
-            <FaTruck />
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-4 text-white shadow-[0_2px_15px_-3px_rgba(251,146,60,0.3)] hover:shadow-[0_2px_15px_-3px_rgba(251,146,60,0.4)] transition-shadow duration-300 ease-in-out">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-lg font-medium">Heavy Vehicles</h3>
+              <p className="text-3xl font-bold mt-2">{heavyVehicles}</p>
+            </div>
+            <FaTruck className="w-10 h-10 text-white/90" />
           </div>
-          <p className="text-sm font-medium text-red-600">Heavy Vehicles</p>
-          <p className="text-2xl font-bold text-red-600">{heavyVehicles}</p>
         </div>
-        <div className="flex flex-col items-center justify-center bg-blue-100 p-4 rounded-lg shadow hover:shadow-md">
-          <div className="text-3xl text-blue-500 mb-2">
-            <FaCar />
+
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white shadow-[0_2px_15px_-3px_rgba(59,130,246,0.3)] hover:shadow-[0_2px_15px_-3px_rgba(59,130,246,0.4)] transition-shadow duration-300 ease-in-out">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-lg font-medium">Light Vehicles</h3>
+              <p className="text-3xl font-bold mt-2">{lightVehicles}</p>
+            </div>
+            <FaCar className="w-10 h-10 text-white/90" />
           </div>
-          <p className="text-sm font-medium text-blue-600">Light Vehicles</p>
-          <p className="text-2xl font-bold text-blue-600">{lightVehicles}</p>
         </div>
       </div>
     </div>
