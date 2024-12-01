@@ -1,4 +1,4 @@
-version: '3.8'
+
 
 services:
   web:
@@ -24,6 +24,7 @@ services:
       - "8000:8000"
     volumes:
       - ./server:/app
+      - ./server/yolo_model/best.pt:/app/server/yolo_model/best.pt
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     environment:
       - PYTHONUNBUFFERED=1
