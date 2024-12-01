@@ -17,9 +17,10 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 COPY server/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir "uvicorn[standard]" 
 
 COPY server/ .
-# Copy the YOLO model file into the container
+
 COPY server/yolo_model/best.pt /app/server/yolo_model/best.pt
 COPY --from=frontend /app/dist /app/static
 
