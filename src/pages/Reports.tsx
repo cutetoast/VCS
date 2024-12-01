@@ -86,7 +86,7 @@ const Reports = () => {
   const exportData = () => {
     const filteredDetections = getFilteredDetections();
     const csvContent = [
-      ['Road Name', 'Timestamp', 'Car', 'Truck', 'Bus', 'Motorcycle', 'Van'],
+      ['Road Name', 'Timestamp', 'Car', 'Truck', 'Bus', 'Motorcycle', 'Van','Heavy Vehicles', 'Light Vehicles'],
       ...filteredDetections.map((d) => [
         d.roadName,
         d.timestamp,
@@ -95,6 +95,8 @@ const Reports = () => {
         d.stats?.Bus || 0,
         d.stats?.Motorcycle || 0,
         d.stats?.Van || 0,
+        (d.stats?.Bus || 0) + (d.stats?.Truck || 0),
+        (d.stats?.Car || 0) + (d.stats?.Motorcycle || 0) + (d.stats?.Van || 0),
       ]),
     ]
       .map((row) => row.join(','))
