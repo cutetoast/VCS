@@ -11,7 +11,7 @@ COPY server/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir "uvicorn[standard]" 
 
-COPY server/ .
+#COPY server/ .
 
 #COPY server/yolo_model/best.pt /app/server/yolo_model/best.pt
 
