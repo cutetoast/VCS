@@ -18,7 +18,7 @@ const Dashboard = () => {
   const auth = getAuth();
 
   useEffect(() => {
-    const ws = new WebSocket("ws://vcs-1.onrender.com/ws");
+    const ws = new WebSocket("wss://http://0.0.0.0:8000 /ws");
 
     ws.onopen = () => console.log("WebSocket connection established.");
 
