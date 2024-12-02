@@ -206,18 +206,15 @@ const Dashboard = () => {
             <h2 className="text-xl font-semibold mb-4">Detection Guide</h2>
             <div className="prose prose-sm text-gray-600">
               <p className="mb-4">
-                This system uses advanced AI to detect and classify vehicles in
+                This system uses YOLOv11 Model to detect and classify vehicles in
                 real-time. Here's how to get started:
               </p>
               <ol className="list-decimal list-inside space-y-2">
                 <li>Enter the road name for the current detection session</li>
-                <li>Choose between live camera or video upload mode</li>
-                <li>For video analysis, upload any MP4, WebM, or Ogg file</li>
+                <li>upload any MP4, WebM, or Ogg file</li>
                 <li>
                   Watch as vehicles are detected and counted automatically
                 </li>
-                <li>Use the pause button to freeze detection when needed</li>
-                <li>Reset counts anytime to start fresh</li>
               </ol>
               <p className="mt-4 text-sm text-gray-500">
                 The detection line appears in the middle of the frame. Vehicles

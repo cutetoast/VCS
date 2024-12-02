@@ -17,6 +17,15 @@ const Navbar = () => {
     navigate('/');
   };
 
+  // Do not render navbar on landing, login, or signup pages
+if (
+
+  location.pathname === '/login' || 
+  location.pathname === '/signup'
+) {
+  return null;
+}
+
   return (
     <nav className="bg-blue-600 text-white shadow-lg">
       <div className="container mx-auto px-4">
@@ -24,7 +33,7 @@ const Navbar = () => {
           <div className="flex items-center space-x-8">
             <Link to="/" className="flex items-center space-x-2">
               <Car size={24} />
-              <span className="font-bold text-xl">VehicleTracker</span>
+              <span className="font-bold text-xl">VCS</span>
             </Link>
             {user && (
               <div className="flex space-x-4">
