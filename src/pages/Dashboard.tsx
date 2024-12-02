@@ -18,7 +18,7 @@ const Dashboard = () => {
   const auth = getAuth();
 
   useEffect(() => {
-    const ws = new WebSocket("wss://0.0.0.0:8000/ws");
+    const ws = new WebSocket("ws://localhost:8000/ws");
 
     ws.onopen = () => console.log("WebSocket connection established.");
 
@@ -90,7 +90,7 @@ const Dashboard = () => {
         setIsProcessing(true);
 
         const response = await axios.post(
-          "http://vcs-backend-gjui.onrender.com/process-video/",
+          "http://localhost:8000/process-video/",
           formData,
           {
             headers: { "Content-Type": "multipart/form-data" },
@@ -100,13 +100,13 @@ const Dashboard = () => {
         const { video_url } = response.data;
         if (!video_url) throw new Error("Invalid server response.");
         setVideoStreamUrl(
-          `http://vcs-backend-gjui.onrender.com/stream-video?video_url=${encodeURIComponent(
+          `http://localhost:8000/stream-video?video_url=${encodeURIComponent(
             video_url
           )}`
         );
 
         const statsResponse = await axios.get(
-          "http://vcs-backend-gjui.onrender.com/final-stats/"
+          "http://localhost:8000/final-stats/"
         );
         setDetectionData(statsResponse.data.stats);
 
