@@ -1,18 +1,18 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { Car, BarChart2, Shield, Activity, ArrowRight } from 'lucide-react';
+import React from "react";
+import { Link } from "react-router-dom";
+import { Car, BarChart2, Shield, Activity, ArrowRight } from "lucide-react";
 
 const Landing: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-6 lg:px-12">
-    
       {/* Hero Section */}
       <div className="text-center py-16 relative">
         <h1 className="text-5xl md:text-6xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 mb-6 leading-tight">
           Vehicle Detection & Counting
         </h1>
         <p className="text-lg md:text-xl text-gray-700 leading-relaxed max-w-3xl mx-auto mb-8">
-          YOLOv11 powered vehicle detection and counting systems. Transform your traffic management with AI.
+          YOLOv11 powered vehicle detection and counting systems. Transform your
+          traffic management with AI.
         </p>
         <div className="flex justify-center gap-4 md:gap-6">
           <Link
@@ -21,6 +21,13 @@ const Landing: React.FC = () => {
             aria-label="Sign up for the system"
           >
             Get Started
+          </Link>
+          <Link
+            to="/login"
+            className="px-8 py-3 rounded-full bg-gray-200 text-gray-800 font-medium shadow-md hover:bg-gray-300 transition"
+            aria-label="Sign in to the system"
+          >
+            Sign In
           </Link>
           <Link
             to="/demo"
@@ -45,18 +52,21 @@ const Landing: React.FC = () => {
           {[
             {
               icon: <Car className="w-14 h-14 text-purple-600 mb-4" />,
-              title: 'Real-time Detection',
-              description: 'YOLOv11 algorithms for accurate vehicle detection and classification in real-time.',
+              title: "Real-time Detection",
+              description:
+                "YOLOv11 algorithms for accurate vehicle detection and classification in real-time.",
             },
             {
               icon: <BarChart2 className="w-14 h-14 text-purple-600 mb-4" />,
-              title: 'Detailed Analytics',
-              description: 'Comprehensive traffic analysis with detailed reports and visualizations.',
+              title: "Detailed Analytics",
+              description:
+                "Comprehensive traffic analysis with detailed reports and visualizations.",
             },
             {
               icon: <Activity className="w-14 h-14 text-purple-600 mb-4" />,
-              title: 'Traffic Insights',
-              description: 'Make data-driven decisions with advanced traffic pattern analysis.',
+              title: "Traffic Insights",
+              description:
+                "Make data-driven decisions with advanced traffic pattern analysis.",
             },
             // {
             //   icon: <Shield className="w-14 h-14 text-purple-600 mb-4" />,
@@ -79,7 +89,9 @@ const Landing: React.FC = () => {
               className="bg-white p-6 md:p-8 rounded-lg shadow-md hover:shadow-xl hover:scale-105 transition duration-300"
             >
               {feature.icon}
-              <h3 className="text-xl font-semibold text-gray-800 mb-3">{feature.title}</h3>
+              <h3 className="text-xl font-semibold text-gray-800 mb-3">
+                {feature.title}
+              </h3>
               <p className="text-gray-600">{feature.description}</p>
             </div>
           ))}
@@ -186,10 +198,22 @@ const Landing: React.FC = () => {
       {/* Footer */}
       <footer className="border-t border-gray-200 py-8 mt-16">
         <div className="flex flex-col md:flex-row justify-between items-center">
-          <p className="text-gray-600 mb-4 md:mb-0">© 2024 Vehicle Counting System. All rights reserved.</p>
+          <p className="text-gray-600 mb-4 md:mb-0">
+            © 2024 Vehicle Counting System. All rights reserved.
+          </p>
           <nav className="flex gap-6">
-            <Link to="/terms" className="text-gray-600 hover:text-blue-600 transition">Terms of Service</Link>
-            <Link to="/privacy" className="text-gray-600 hover:text-blue-600 transition">Privacy Policy</Link>
+            <Link
+              to="/terms"
+              className="text-gray-600 hover:text-blue-600 transition"
+            >
+              Terms of Service
+            </Link>
+            <Link
+              to="/privacy"
+              className="text-gray-600 hover:text-blue-600 transition"
+            >
+              Privacy Policy
+            </Link>
           </nav>
         </div>
       </footer>
@@ -198,4 +222,3 @@ const Landing: React.FC = () => {
 };
 
 export default Landing;
-
