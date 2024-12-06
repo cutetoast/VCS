@@ -122,11 +122,11 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen">
-      <main className="max-w-7x1 mx-auto p-6 sm:p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <main className=" ">
         {/* Video Analysis Section */}
 
         <div>
-        <div className="bg-white rounded-xl shadow-sm p-8 w-full max-w-4xl h-auto">
+        <div className="bg-white rounded-xl shadow-sm p-8 w-full max-w-7xl h-auto">
             <h2 className="text-xl font-semibold mb-4">Video Analysis</h2>
             <div className="mb-4">
               <label
@@ -199,7 +199,7 @@ const Dashboard = () => {
         </div>
 
         {/* Detection Results Section */}
-        <div className="space-y-6">
+        {/* <div className="space-y-6">
           <DetectionStats data={detectionData} />
 
           <div className="bg-white rounded-xl shadow-sm p-6">
@@ -222,7 +222,7 @@ const Dashboard = () => {
               </p>
             </div>
           </div>
-        </div>
+        </div> */}
       </main>
     </div>
   );

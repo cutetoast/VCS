@@ -129,35 +129,35 @@ def draw_line_and_counts(frame, frame_width):
                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 
 
-# @app.websocket("/ws")
-# async def websocket_endpoint(websocket: WebSocket):
-#     await websocket.accept()
-#     connected_websockets.add(websocket)
-#     try:
-#         while True:
-#             await asyncio.sleep(1)  
-#     except WebSocketDisconnect:
-#         connected_websockets.remove(websocket)
-
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     connected_websockets.add(websocket)
     try:
         while True:
-            # Keep the connection alive
-            data = await websocket.receive_text()
-            # Optional: handle incoming messages
-            await websocket.send_json({
-                "status": "connected",
-                "message": "WebSocket is active"
-            })
+            await asyncio.sleep(1)  
     except WebSocketDisconnect:
-        print("WebSocket disconnected")
         connected_websockets.remove(websocket)
-    except Exception as e:
-        print(f"WebSocket error: {e}")
-        connected_websockets.remove(websocket)
+
+# @app.websocket("/ws")
+# async def websocket_endpoint(websocket: WebSocket):
+#     await websocket.accept()
+#     connected_websockets.add(websocket)
+#     try:
+#         while True:
+#             # Keep the connection alive
+#             data = await websocket.receive_text()
+#             # Optional: handle incoming messages
+#             await websocket.send_json({
+#                 "status": "connected",
+#                 "message": "WebSocket is active"
+#             })
+#     except WebSocketDisconnect:
+#         print("WebSocket disconnected")
+#         connected_websockets.remove(websocket)
+#     except Exception as e:
+#         print(f"WebSocket error: {e}")
+#         connected_websockets.remove(websocket)
 
 
 @app.post("/process-video/")
@@ -174,16 +174,16 @@ async def process_video(video: UploadFile = File(...)):
 
     return {"video_url": latest_video_path}
 
-@app.get("/final-stats/")
-async def get_final_stats():
-    """Return the final vehicle counts for each class."""
-    global class_counters
-    final_counts = {
-        "classCounters": class_counters,
-        "heavyVehicles": class_counters["Bus"] + class_counters["Truck"],
-        "lightVehicles": class_counters["Car"] + class_counters["Motorcycle"] + class_counters["Van"]
-    }
-    return {"stats": final_counts}
+# @app.get("/final-stats/")
+# async def get_final_stats():
+#     """Return the final vehicle counts for each class."""
+#     global class_counters
+#     final_counts = {
+#         "classCounters": class_counters,
+#         "heavyVehicles": class_counters["Bus"] + class_counters["Truck"],
+#         "lightVehicles": class_counters["Car"] + class_counters["Motorcycle"] + class_counters["Van"]
+#     }
+#     return {"stats": final_counts}
 
 
 @app.get("/stream-video/")
