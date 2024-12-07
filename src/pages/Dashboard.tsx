@@ -5,7 +5,7 @@ import axios from "axios";
 import { getAuth } from "firebase/auth";
 import { doc, updateDoc, setDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
-import DetectionStats from "../components/DetectionStats";
+
 
 const Dashboard = () => {
   const [roadName, setRoadName] = useState<string>("");
@@ -13,7 +13,7 @@ const Dashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [detectionData, setDetectionData] = useState<any>(null);
+  const [, setDetectionData] = useState<any>(null);
 
   const auth = getAuth();
 
@@ -37,7 +37,7 @@ const Dashboard = () => {
             timestamp: new Date().toISOString(),
             stats: updatedStats.classCounters,
           });
-        } catch (updateError) {
+        } catch (updateError: any) {
           if (updateError.code === "not-found") {
             await setDoc(detectionsRef, {
               roadName,

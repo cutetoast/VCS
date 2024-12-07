@@ -30,15 +30,16 @@ class_counters = {class_name: 0 for class_name in class_names}
 tracked_objects = {}
 connected_websockets = set()
 
+ #Reset all counters and tracked objects.
 def reset_counters():
-    """Reset all counters and tracked objects."""
+   
     global class_counters, tracked_objects
     class_counters = {class_name: 0 for class_name in class_names}
     tracked_objects = {}
 
-
+ #Find the closest existing object to the new centroid.
 def get_closest_object_id(new_centroid, existing_objects, max_distance=50):
-    """Find the closest existing object to the new centroid."""
+   
     closest_id = None
     min_distance = float('inf')
     for object_id, data in existing_objects.items():
@@ -50,9 +51,9 @@ def get_closest_object_id(new_centroid, existing_objects, max_distance=50):
             closest_id = object_id
     return closest_id
 
-
+ #Send the latest class counters to all connected WebSocket clients.
 async def broadcast_class_counters():
-    """Send the latest class counters to all connected WebSocket clients."""
+   
     global connected_websockets, class_counters
     data = {
         "classCounters": class_counters,
@@ -66,9 +67,9 @@ async def broadcast_class_counters():
         except WebSocketDisconnect:
             connected_websockets.remove(ws)
 
-
+# Process detections and update tracked objects
 def process_detections(results, frame_width, frame):
-    """Process detections and update tracked objects."""
+
     global class_counters
     updated = False
     for result in results:
@@ -109,9 +110,9 @@ def process_detections(results, frame_width, frame):
 
     return frame, updated
 
-
+#Draw the counting line and display counts on the frame.
 def draw_line_and_counts(frame, frame_width):
-    """Draw the counting line and display counts on the frame."""
+ 
     cv2.line(frame, (0, line_position), (frame_width, line_position), (0, 255, 0), 2)
 
     for idx, (class_name, count) in enumerate(class_counters.items()):
@@ -139,27 +140,6 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         connected_websockets.remove(websocket)
 
-# @app.websocket("/ws")
-# async def websocket_endpoint(websocket: WebSocket):
-#     await websocket.accept()
-#     connected_websockets.add(websocket)
-#     try:
-#         while True:
-#             # Keep the connection alive
-#             data = await websocket.receive_text()
-#             # Optional: handle incoming messages
-#             await websocket.send_json({
-#                 "status": "connected",
-#                 "message": "WebSocket is active"
-#             })
-#     except WebSocketDisconnect:
-#         print("WebSocket disconnected")
-#         connected_websockets.remove(websocket)
-#     except Exception as e:
-#         print(f"WebSocket error: {e}")
-#         connected_websockets.remove(websocket)
-
-
 @app.post("/process-video/")
 async def process_video(video: UploadFile = File(...)):
     global latest_video_path
@@ -173,18 +153,6 @@ async def process_video(video: UploadFile = File(...)):
         latest_video_path = temp_video.name
 
     return {"video_url": latest_video_path}
-
-# @app.get("/final-stats/")
-# async def get_final_stats():
-#     """Return the final vehicle counts for each class."""
-#     global class_counters
-#     final_counts = {
-#         "classCounters": class_counters,
-#         "heavyVehicles": class_counters["Bus"] + class_counters["Truck"],
-#         "lightVehicles": class_counters["Car"] + class_counters["Motorcycle"] + class_counters["Van"]
-#     }
-#     return {"stats": final_counts}
-
 
 @app.get("/stream-video/")
 async def stream_video(video_url: str):
