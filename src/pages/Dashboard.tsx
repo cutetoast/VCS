@@ -105,10 +105,7 @@ const Dashboard = () => {
           )}`
         );
 
-        const statsResponse = await axios.get(
-          "http://localhost:8000/final-stats/"
-        );
-        setDetectionData(statsResponse.data.stats);
+       //setDetectionData(statsResponse.data.stats);
 
         setSuccess("Please wait for the video to process.");
       } catch (err) {
