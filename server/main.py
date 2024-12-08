@@ -137,7 +137,7 @@ async def websocket_endpoint(websocket: WebSocket):
         connected_websockets.remove(websocket)
 
 
-@app.post("/process-video/")
+@app.post("/uploadvideo/")
 async def process_video(video: UploadFile = File(...)):
     """
     Endpoint to handle video uploads.
@@ -151,7 +151,7 @@ async def process_video(video: UploadFile = File(...)):
     return {"video_url": temp_file.name}
 
 
-@app.get("/stream-video/")
+@app.get("/showvideo/")
 async def stream_video(video_url: str):
     """
     Streams the processed video with real-time vehicle detection and annotations.
