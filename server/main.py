@@ -5,189 +5,174 @@ import cv2
 from ultralytics import YOLO
 import tempfile
 import os
-from typing import Dict
 import asyncio
 
 app = FastAPI()
 
-# Enable CORS
+# Enable CORS for the frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"], 
+    allow_origins=["http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Load YOLO model
-model = YOLO("server/yolo_model/best.pt")
+# Globals
+model = YOLO("server/yolo_model/yolo2.pt")  # Load YOLO model
+line_position = 400  # Position of the counting line
+confidence_threshold = 0.5  # Minimum confidence for detections
+class_names = ["Bus", "Car", "Motorcycle", "Truck", "Van"]  # Classes to detect
+class_counters = {name: 0 for name in class_names}  # Vehicle counts for each class
+tracked_vehicles = {}  # Tracks vehicles between frames
+connected_websockets = set()  # Tracks active WebSocket clients
 
-# Constants and global variables
-line_position = 400  # Line for counting
-confidence_threshold = 0.5
-class_names = ["Bus", "Car", "Motorcycle", "Truck", "Van"]
-class_counters = {class_name: 0 for class_name in class_names}
-tracked_objects = {}
-connected_websockets = set()
 
- #Reset all counters and tracked objects.
 def reset_counters():
-   
-    global class_counters, tracked_objects
-    class_counters = {class_name: 0 for class_name in class_names}
-    tracked_objects = {}
+    """
+    Resets vehicle counters and clears tracked vehicles.
+    Called when a new video starts processing.
+    """
+    global class_counters, tracked_vehicles
+    class_counters = {name: 0 for name in class_names}
+    tracked_vehicles = {}
 
- #Find the closest existing object to the new centroid.
-def get_closest_object_id(new_centroid, existing_objects, max_distance=50):
-   
+
+def get_closest_vehicles_id(centerpoint, max_distance=50):
+    """
+    Finds the closest tracked vehicles to the given centerpoint.
+    Ensures the same vehicle is not counted multiple times.
+    """
     closest_id = None
     min_distance = float('inf')
-    for object_id, data in existing_objects.items():
-        existing_centroid = data['centroid']
-        distance = ((new_centroid[0] - existing_centroid[0]) ** 2 +
-                    (new_centroid[1] - existing_centroid[1]) ** 2) ** 0.5
+    for obj_id, data in tracked_vehicles.items():
+        existing_centerpoint = data["centerpoint"]
+        distance = ((centerpoint[0] - existing_centerpoint[0]) ** 2 + (centerpoint[1] - existing_centerpoint[1]) ** 2) ** 0.5
         if distance < min_distance and distance <= max_distance:
+            closest_id = obj_id
             min_distance = distance
-            closest_id = object_id
     return closest_id
 
- #Send the latest class counters to all connected WebSocket clients.
-async def broadcast_class_counters():
-   
-    global connected_websockets, class_counters
+
+def process_frame(results, frame):
+    """
+    Processes the current video frame.
+    Detects vehicles, updates counters, and tracks vehicles.
+    """
+    global class_counters, tracked_vehicles
+    for result in results:
+        if not hasattr(result, "boxes"):
+            continue
+        for box, score, cls in zip(result.boxes.xyxy, result.boxes.conf, result.boxes.cls):
+            if score < confidence_threshold:
+                continue
+            class_label = class_names[int(cls)]
+            x1, y1, x2, y2 = map(int, box)
+            centerpoint = ((x1 + x2) // 2, (y1 + y2) // 2)
+
+            # Track vehicles or create a new one
+            vehicles_id = get_closest_vehicles_id(centerpoint)
+            if vehicles_id is None:
+                vehicles_id = f"{class_label}_{len(tracked_vehicles)}"
+                tracked_vehicles[vehicles_id] = {"centerpoint": centerpoint, "counted": False}
+            else:
+                tracked_vehicles[vehicles_id]["centerpoint"] = centerpoint
+
+            # Count vehicle if it crosses the line
+            if not tracked_vehicles[vehicles_id]["counted"] and centerpoint[1] > line_position:
+                class_counters[class_label] += 1
+                tracked_vehicles[vehicles_id]["counted"] = True
+
+            # Draw bounding box and label
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
+            cv2.putText(frame, f"{class_label} {score:.2f}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+
+
+def annotate_frame(frame):
+    """
+    Annotates the video frame with the counting line, vehicle counts, and heavy/light vehicle summaries.
+    """
+    # Draw the counting line
+    cv2.line(frame, (0, line_position), (frame.shape[1], line_position), (0, 255, 0), 2)
+
+    # Display individual vehicle counts
+    for i, (name, count) in enumerate(class_counters.items()):
+        cv2.putText(frame, f"{name}: {count}", (10, 30 + i * 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+
+    # Calculate and display heavy and light vehicle counts
+    heavy_vehicles = class_counters["Bus"] + class_counters["Truck"]
+    light_vehicles = class_counters["Car"] + class_counters["Motorcycle"] + class_counters["Van"]
+    cv2.putText(frame, f"Heavy: {heavy_vehicles}", (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+    cv2.putText(frame, f"Light: {light_vehicles}", (10, 180), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+
+
+async def broadcast_counters():
+    """
+    Broadcasts the current vehicle counts, including heavy and light vehicles, to all connected WebSocket clients.
+    """
     data = {
         "classCounters": class_counters,
         "heavyVehicles": class_counters["Bus"] + class_counters["Truck"],
-        "lightVehicles": class_counters["Car"] + class_counters["Motorcycle"] + class_counters["Van"]
+        "lightVehicles": class_counters["Car"] + class_counters["Motorcycle"] + class_counters["Van"],
     }
-    print("Broadcasting counters:", data)  # Debug log
     for ws in list(connected_websockets):
         try:
             await ws.send_json(data)
         except WebSocketDisconnect:
             connected_websockets.remove(ws)
 
-# Process detections and update tracked objects
-def process_detections(results, frame_width, frame):
-
-    global class_counters
-    updated = False
-    for result in results:
-        if not hasattr(result, "boxes"):
-            continue
-
-        boxes = result.boxes.xyxy
-        scores = result.boxes.conf
-        classes = result.boxes.cls
-
-        for box, score, cls in zip(boxes, scores, classes):
-            if score < confidence_threshold:
-                continue
-
-            class_id = int(cls)
-            class_label = class_names[class_id]
-            x1, y1, x2, y2 = map(int, box)
-            centroid = ((x1 + x2) // 2, (y1 + y2) // 2)
-
-            # Match the centroid to an existing object or create a new one
-            object_id = get_closest_object_id(centroid, tracked_objects)
-            if object_id is None:
-                object_id = f"{class_label}_{len(tracked_objects)}"
-                tracked_objects[object_id] = {'centroid': centroid, 'counted': False}
-            else:
-                tracked_objects[object_id]['centroid'] = centroid
-
-            # Check if the object crosses the line
-            if not tracked_objects[object_id]['counted'] and centroid[1] > line_position:
-                class_counters[class_label] += 1
-                tracked_objects[object_id]['counted'] = True
-                updated = True
-
-            # Draw bounding box and label
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
-            cv2.putText(frame, f'{class_label}: {score:.2f}', (x1, y1 - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
-
-    return frame, updated
-
-#Draw the counting line and display counts on the frame.
-def draw_line_and_counts(frame, frame_width):
- 
-    cv2.line(frame, (0, line_position), (frame_width, line_position), (0, 255, 0), 2)
-
-    for idx, (class_name, count) in enumerate(class_counters.items()):
-        cv2.putText(frame, f'{class_name} Count: {count}', (10, 30 + idx * 20),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
-
-    heavy_vehicle_count = class_counters['Bus'] + class_counters['Truck']
-    light_vehicle_count = (class_counters['Car'] +
-                           class_counters['Motorcycle'] +
-                           class_counters['Van'])
-
-    cv2.putText(frame, f'Heavy: {heavy_vehicle_count}', (frame_width - 200, 30),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-    cv2.putText(frame, f'Light: {light_vehicle_count}', (frame_width - 200, 60),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    """
+    Handles WebSocket connections.
+    Clients use this to receive real-time vehicle count updates.
+    """
     await websocket.accept()
     connected_websockets.add(websocket)
     try:
         while True:
-            await asyncio.sleep(1)  
+            await asyncio.sleep(1)
     except WebSocketDisconnect:
         connected_websockets.remove(websocket)
 
+
 @app.post("/process-video/")
 async def process_video(video: UploadFile = File(...)):
-    global latest_video_path
-    reset_counters()  # Reset counters for each new video
-
+    """
+    Endpoint to handle video uploads.
+    Saves the video temporarily and returns the file path.
+    """
     if not video.filename.lower().endswith((".mp4", ".avi", ".mov")):
-        raise HTTPException(400, "Invalid file format. Please upload MP4, AVI, or MOV files.")
+        raise HTTPException(400, "Invalid file format.")
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
+    temp_file.write(await video.read())
+    temp_file.close()
+    return {"video_url": temp_file.name}
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_video:
-        temp_video.write(await video.read())
-        latest_video_path = temp_video.name
-
-    return {"video_url": latest_video_path}
 
 @app.get("/stream-video/")
 async def stream_video(video_url: str):
+    """
+    Streams the processed video with real-time vehicle detection and annotations.
+    """
     if not os.path.exists(video_url):
-        raise HTTPException(400, "Video file not found.")
-
+        raise HTTPException(404, "Video file not found.")
     cap = cv2.VideoCapture(video_url)
     if not cap.isOpened():
-        raise HTTPException(500, "Failed to open video file.")
+        raise HTTPException(500, "Cannot open video file.")
 
     async def generate_frames():
+        reset_counters()  # Reset counters for a new video
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
-
-            frame_height, frame_width, _ = frame.shape
-
-            # YOLO Detection
-            results = model(frame)
-
-            # Process detections
-            frame, updated = process_detections(results, frame_width, frame)
-
-            # Broadcast updates if counters were updated
-            if updated:
-                await broadcast_class_counters()
-
-            # Draw line and display counts
-            draw_line_and_counts(frame, frame_width)
-
-            # Encode the frame as JPEG
+            process_frame(model(frame), frame)  # Process the frame
+            annotate_frame(frame)  # Add annotations
+            await broadcast_counters()  # Send updated counts
             _, jpeg = cv2.imencode(".jpg", frame)
             yield (b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + jpeg.tobytes() + b"\r\n")
-
         cap.release()
 
     return StreamingResponse(generate_frames(), media_type="multipart/x-mixed-replace; boundary=frame")

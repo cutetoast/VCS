@@ -1,6 +1,5 @@
-import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Car, BarChart2, User, LogOut } from 'lucide-react';
+import { Car, User, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const Navbar = () => {
@@ -9,7 +8,7 @@ const Navbar = () => {
   const { user, logout } = useAuth();
 
   const isActive = (path: string) => {
-    return location.pathname === path ? 'bg-blue-700' : '';
+    return location.pathname === path ? 'bg-red-700' : '';
   };
 
   const handleLogout = () => {
@@ -17,7 +16,6 @@ const Navbar = () => {
     navigate('/');
   };
 
-  // Do not render navbar on landing, login, or signup pages
 if (
 
   location.pathname === '/login' || 
@@ -58,7 +56,7 @@ if (
               <>
                 <Link
                   to="/profile"
-                  className="flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+                  className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium ${isActive('/profile')} hover:bg-blue-700 transition-colors`}
                 >
                   <User size={18} />
                   <span>{user.name}</span>
