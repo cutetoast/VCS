@@ -12,14 +12,15 @@ app = FastAPI()
 # Enable CORS for the frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5174"],
+    allow_origins=["https://vcs-gray.vercel.app/"],
+ #  allow_origins=["http://localhost:5174"],https://vcs-gray.vercel.app/
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Globals
-model = YOLO("backend/yolo_model/yolo2.pt")  # Load YOLO model
+model = YOLO("yolo_model/yolo2.pt")  # Load YOLO model
 line_position = 400  # Position of the counting line
 confidence_threshold = 0.5  # Minimum confidence for detections
 class_names = ["Bus", "Car", "Motorcycle", "Truck", "Van"]  # Classes to detect
