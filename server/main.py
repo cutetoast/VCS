@@ -28,21 +28,19 @@ tracked_vehicles = {}  # Tracks vehicles between frames
 connected_websockets = set()  # Tracks active WebSocket clients
 
 
+# Resets vehicle counters and clears tracked vehicles. 
+# Called when a new video starts processing.
+    
 def reset_counters():
-    """
-    Resets vehicle counters and clears tracked vehicles.
-    Called when a new video starts processing.
-    """
+ 
     global class_counters, tracked_vehicles
     class_counters = {name: 0 for name in class_names}
     tracked_vehicles = {}
 
-
+# Finds the closest tracked vehicles to the given centerpoint.
+# Ensures the same vehicle is not counted multiple times.
 def get_closest_vehicles_id(centerpoint, max_distance=50):
-    """
-    Finds the closest tracked vehicles to the given centerpoint.
-    Ensures the same vehicle is not counted multiple times.
-    """
+    
     closest_id = None
     min_distance = float('inf')
     for obj_id, data in tracked_vehicles.items():
@@ -88,10 +86,9 @@ def process_frame(results, frame):
             cv2.putText(frame, f"{class_label} {score:.2f}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
 
 
+#  Annotates the video frame with the counting line, vehicle counts, and heavy/light vehicle summaries.
 def annotate_frame(frame):
-    """
-    Annotates the video frame with the counting line, vehicle counts, and heavy/light vehicle summaries.
-    """
+   
     # Draw the counting line
     cv2.line(frame, (0, line_position), (frame.shape[1], line_position), (0, 255, 0), 2)
 
@@ -105,11 +102,9 @@ def annotate_frame(frame):
     cv2.putText(frame, f"Heavy: {heavy_vehicles}", (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
     cv2.putText(frame, f"Light: {light_vehicles}", (10, 180), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
 
-
+#  Broadcasts the current vehicle counts, including heavy and light vehicles, to all connected WebSocket clients.
 async def broadcast_counters():
-    """
-    Broadcasts the current vehicle counts, including heavy and light vehicles, to all connected WebSocket clients.
-    """
+   
     data = {
         "classCounters": class_counters,
         "heavyVehicles": class_counters["Bus"] + class_counters["Truck"],
@@ -121,13 +116,11 @@ async def broadcast_counters():
         except WebSocketDisconnect:
             connected_websockets.remove(ws)
 
-
+# Handles WebSocket connections.
+#Clients use this to receive real-time vehicle count updates.
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    """
-    Handles WebSocket connections.
-    Clients use this to receive real-time vehicle count updates.
-    """
+   
     await websocket.accept()
     connected_websockets.add(websocket)
     try:
@@ -136,13 +129,11 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         connected_websockets.remove(websocket)
 
-
+# Endpoint to handle video uploads.
+# Saves the video temporarily and returns the file path.
 @app.post("/uploadvideo/")
 async def process_video(video: UploadFile = File(...)):
-    """
-    Endpoint to handle video uploads.
-    Saves the video temporarily and returns the file path.
-    """
+ 
     if not video.filename.lower().endswith((".mp4", ".avi", ".mov")):
         raise HTTPException(400, "Invalid file format.")
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
@@ -150,12 +141,10 @@ async def process_video(video: UploadFile = File(...)):
     temp_file.close()
     return {"video_url": temp_file.name}
 
-
+#  Streams the processed video with real-time vehicle detection and annotations.
 @app.get("/showvideo/")
 async def stream_video(video_url: str):
-    """
-    Streams the processed video with real-time vehicle detection and annotations.
-    """
+ 
     if not os.path.exists(video_url):
         raise HTTPException(404, "Video file not found.")
     cap = cv2.VideoCapture(video_url)
