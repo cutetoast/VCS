@@ -1,5 +1,5 @@
 fastapi==0.115.5
 python-multipart
 ultralytics==8.3.39
-uvicorn==0.32.1
 asyncio==3.4.3
+uvicorn[standard]
