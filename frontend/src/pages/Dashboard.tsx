@@ -5,6 +5,7 @@ import axios from "axios";
 import { getAuth } from "firebase/auth";
 import { doc, updateDoc, setDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
+import React from "react";
 
 
 const Dashboard = () => {
@@ -18,7 +19,7 @@ const Dashboard = () => {
   const auth = getAuth();
 
   useEffect(() => {
-    const ws = new WebSocket("wss://vcs-aoef.onrender.com/ws");
+    const ws = new WebSocket("ws://localhost:8000/ws");
 
     ws.onopen = () => console.log("WebSocket connection established.");
 
@@ -90,7 +91,7 @@ const Dashboard = () => {
         setIsProcessing(true);
 
         const response = await axios.post(
-          "https://vcs-aoef.onrender.com/uploadvideo/",
+          "http://0.0.0.0:8000/uploadvideo/",
           formData,
           {
             headers: { "Content-Type": "multipart/form-data" },
@@ -100,7 +101,7 @@ const Dashboard = () => {
         const { video_url } = response.data;
         if (!video_url) throw new Error("Invalid server response.");
         setVideoStreamUrl(
-          `https://vcs-aoef.onrender.com/showvideo?video_url=${encodeURIComponent(
+          `http://0.0.0.0:8000/showvideo?video_url=${encodeURIComponent(
             video_url
           )}`
         );
