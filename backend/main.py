@@ -6,6 +6,7 @@ from ultralytics import YOLO
 import tempfile
 import os
 import asyncio
+import time
 
 app = FastAPI()
 
@@ -13,7 +14,7 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
   #  allow_origins=["https://vcs-gray.vercel.app"],
-    allow_origins=["http://localhost:5174"],
+    allow_origins=["http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -38,7 +39,7 @@ def reset_counters():
     class_counters = {name: 0 for name in class_names}
     tracked_vehicles = {}
 
-# Finds the closest tracked vehicles to the given centerpoint.
+# Finds the closest tracked vehicles to the given centerpoint. tracking mechanism.
 # Ensures the same vehicle is not counted multiple times.
 def get_closest_vehicles_id(centerpoint, max_distance=50):
     
@@ -88,7 +89,7 @@ def process_frame(results, frame):
 
 
 #  Annotates the video frame with the counting line, vehicle counts, and heavy/light vehicle summaries.
-def annotate_frame(frame):
+def annotate_frame(frame, fps=None):
    
     # Draw the counting line
     cv2.line(frame, (0, line_position), (frame.shape[1], line_position), (0, 255, 0), 2)
@@ -100,8 +101,12 @@ def annotate_frame(frame):
     # Calculate and display heavy and light vehicle counts
     heavy_vehicles = class_counters["Bus"] + class_counters["Truck"]
     light_vehicles = class_counters["Car"] + class_counters["Motorcycle"] + class_counters["Van"]
-    cv2.putText(frame, f"Heavy: {heavy_vehicles}", (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-    cv2.putText(frame, f"Light: {light_vehicles}", (10, 180), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+    cv2.putText(frame, f"Heavy Vehicles: {heavy_vehicles}", (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+    cv2.putText(frame, f"Light Vehicles: {light_vehicles}", (10, 180), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+
+    # Display FPS
+    if fps is not None:
+        cv2.putText(frame, f"FPS: {int(fps)}", (frame.shape[1] - 100, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
 
 #  Broadcasts the current vehicle counts, including heavy and light vehicles, to all connected WebSocket clients.
 async def broadcast_counters():
@@ -154,15 +159,26 @@ async def stream_video(video_url: str):
 
     async def generate_frames():
         reset_counters()  # Reset counters for a new video
+        prev_time = time.time()
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
-            process_frame(model(frame), frame)  # Process the frame
-            annotate_frame(frame)  # Add annotations
-            await broadcast_counters()  # Send updated counts
-            _, jpeg = cv2.imencode(".jpg", frame)
-            yield (b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + jpeg.tobytes() + b"\r\n")
+            try:
+                process_frame(model(frame), frame)  # Process the frame
+
+                # Calculate FPS
+                current_time = time.time()
+                fps = 1 / (current_time - prev_time)
+                prev_time = current_time
+
+                annotate_frame(frame, fps=fps)  # Add annotations including FPS
+                await broadcast_counters()  # Send updated counts
+                _, jpeg = cv2.imencode(".jpg", frame)
+                yield (b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + jpeg.tobytes() + b"\r\n")
+            except Exception as e:
+                print(f"Error processing frame: {e}")
+                break
         cap.release()
 
     return StreamingResponse(generate_frames(), media_type="multipart/x-mixed-replace; boundary=frame")

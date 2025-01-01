@@ -40,6 +40,7 @@ const Dashboard = () => {
           });
         } catch (updateError: any) {
           if (updateError.code === "not-found") {
+           // If the document is not found, create a new one
             await setDoc(detectionsRef, {
               roadName,
               userId: user?.uid || "anonymous",
