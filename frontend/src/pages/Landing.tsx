@@ -29,13 +29,13 @@ const Landing: React.FC = () => {
           >
             Sign In
           </Link>
-          <Link
+          {/* <Link
             to="/demo"
             className="px-8 py-3 rounded-full bg-gray-200 text-gray-800 font-medium shadow-md hover:bg-gray-300 transition"
             aria-label="Watch a demo of the system"
           >
             Watch Demo
-          </Link>
+          </Link> */}
         </div>
         {/* Decorative Elements */}
         <div className="absolute -z-10 top-0 left-0 w-80 h-80 bg-blue-400 opacity-25 blur-3xl rounded-full"></div>
