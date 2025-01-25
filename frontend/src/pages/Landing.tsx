@@ -29,13 +29,13 @@ const Landing: React.FC = () => {
           >
             Sign In
           </Link>
-          <Link
+          {/* <Link
             to="/demo"
             className="px-8 py-3 rounded-full bg-gray-200 text-gray-800 font-medium shadow-md hover:bg-gray-300 transition"
             aria-label="Watch a demo of the system"
           >
             Watch Demo
-          </Link>
+          </Link> */}
         </div>
         {/* Decorative Elements */}
         <div className="absolute -z-10 top-0 left-0 w-80 h-80 bg-blue-400 opacity-25 blur-3xl rounded-full"></div>
@@ -199,7 +199,7 @@ const Landing: React.FC = () => {
       <footer className="border-t border-gray-200 py-8 mt-16">
         <div className="flex flex-col md:flex-row justify-between items-center">
           <p className="text-gray-600 mb-4 md:mb-0">
-            © 2024 Vehicle Counting System. All rights reserved.
+            © 2024 Muhammad Mokhtar. All rights reserved.
           </p>
           <nav className="flex gap-6">
             <Link
