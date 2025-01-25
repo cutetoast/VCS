@@ -8,11 +8,10 @@ const Landing: React.FC = () => {
       {/* Hero Section */}
       <div className="text-center py-16 relative">
         <h1 className="text-5xl md:text-6xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 mb-6 leading-tight">
-          Vehicle Detection & Counting
+          Vehicle Classification System
         </h1>
         <p className="text-lg md:text-xl text-gray-700 leading-relaxed max-w-3xl mx-auto mb-8">
-          YOLOv11 powered vehicle detection and counting systems. Transform your
-          traffic management with AI.
+          YOLOv11 powered vehicle classification and counting systems.
         </p>
         <div className="flex justify-center gap-4 md:gap-6">
           <Link

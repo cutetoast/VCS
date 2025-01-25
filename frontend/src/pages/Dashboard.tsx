@@ -206,8 +206,7 @@ const Dashboard = () => {
             <h2 className="text-xl font-semibold mb-4">Detection Guide</h2>
             <div className="prose prose-sm text-gray-600">
               <p className="mb-4">
-                This system uses YOLOv11 Model to detect and classify vehicles in
-                real-time. Here's how to get started:
+                This system uses YOLOv11 Model. Here's how to get started:
               </p>
               <ol className="list-decimal list-inside space-y-2">
                 <li>Enter the road name for the current detection session</li>

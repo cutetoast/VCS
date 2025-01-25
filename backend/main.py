@@ -66,9 +66,9 @@ def process_frame(results, frame):
         for box, score, cls in zip(result.boxes.xyxy, result.boxes.conf, result.boxes.cls):
             if score < confidence_threshold:
                 continue
-            class_label = class_names[int(cls)]
-            x1, y1, x2, y2 = map(int, box)
-            centerpoint = ((x1 + x2) // 2, (y1 + y2) // 2)
+            class_label = class_names[int(cls)]  # Get class label
+            x1, y1, x2, y2 = map(int, box) # Get bounding box coordinates
+            centerpoint = ((x1 + x2) // 2, (y1 + y2) // 2) 
 
             # Track vehicles or create a new one
             vehicles_id = get_closest_vehicles_id(centerpoint)
