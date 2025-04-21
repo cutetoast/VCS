@@ -6,21 +6,22 @@ from ultralytics import YOLO
 import tempfile
 import os
 import asyncio
+import time
 
 app = FastAPI()
 
 # Enable CORS for the frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://vcs-gray.vercel.app"],
- #  allow_origins=["http://localhost:5174"],https://vcs-gray.vercel.app/
+  #  allow_origins=["https://vcs-gray.vercel.app"],
+    allow_origins=["http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Globals
-model = YOLO("yolo_model/yolo2.pt")  # Load YOLO model
+model = YOLO("backend/yolo_model/yolo2.pt")  # Load YOLO model
 line_position = 400  # Position of the counting line
 confidence_threshold = 0.5  # Minimum confidence for detections
 class_names = ["Bus", "Car", "Motorcycle", "Truck", "Van"]  # Classes to detect
@@ -38,7 +39,7 @@ def reset_counters():
     class_counters = {name: 0 for name in class_names}
     tracked_vehicles = {}
 
-# Finds the closest tracked vehicles to the given centerpoint.
+# Finds the closest tracked vehicles to the given centerpoint. tracking mechanism.
 # Ensures the same vehicle is not counted multiple times.
 def get_closest_vehicles_id(centerpoint, max_distance=50):
     
@@ -65,9 +66,9 @@ def process_frame(results, frame):
         for box, score, cls in zip(result.boxes.xyxy, result.boxes.conf, result.boxes.cls):
             if score < confidence_threshold:
                 continue
-            class_label = class_names[int(cls)]
-            x1, y1, x2, y2 = map(int, box)
-            centerpoint = ((x1 + x2) // 2, (y1 + y2) // 2)
+            class_label = class_names[int(cls)]  # Get class label
+            x1, y1, x2, y2 = map(int, box) # Get bounding box coordinates
+            centerpoint = ((x1 + x2) // 2, (y1 + y2) // 2) 
 
             # Track vehicles or create a new one
             vehicles_id = get_closest_vehicles_id(centerpoint)
@@ -88,7 +89,7 @@ def process_frame(results, frame):
 
 
 #  Annotates the video frame with the counting line, vehicle counts, and heavy/light vehicle summaries.
-def annotate_frame(frame):
+def annotate_frame(frame, fps=None):
    
     # Draw the counting line
     cv2.line(frame, (0, line_position), (frame.shape[1], line_position), (0, 255, 0), 2)
@@ -100,8 +101,12 @@ def annotate_frame(frame):
     # Calculate and display heavy and light vehicle counts
     heavy_vehicles = class_counters["Bus"] + class_counters["Truck"]
     light_vehicles = class_counters["Car"] + class_counters["Motorcycle"] + class_counters["Van"]
-    cv2.putText(frame, f"Heavy: {heavy_vehicles}", (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-    cv2.putText(frame, f"Light: {light_vehicles}", (10, 180), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+    cv2.putText(frame, f"Heavy Vehicles: {heavy_vehicles}", (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+    cv2.putText(frame, f"Light Vehicles: {light_vehicles}", (10, 180), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+
+    # Display FPS
+    if fps is not None:
+        cv2.putText(frame, f"FPS: {int(fps)}", (frame.shape[1] - 100, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
 
 #  Broadcasts the current vehicle counts, including heavy and light vehicles, to all connected WebSocket clients.
 async def broadcast_counters():
@@ -154,15 +159,26 @@ async def stream_video(video_url: str):
 
     async def generate_frames():
         reset_counters()  # Reset counters for a new video
+        prev_time = time.time()
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
-            process_frame(model(frame), frame)  # Process the frame
-            annotate_frame(frame)  # Add annotations
-            await broadcast_counters()  # Send updated counts
-            _, jpeg = cv2.imencode(".jpg", frame)
-            yield (b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + jpeg.tobytes() + b"\r\n")
+            try:
+                process_frame(model(frame), frame)  # Process the frame
+
+                # Calculate FPS
+                current_time = time.time()
+                fps = 1 / (current_time - prev_time)
+                prev_time = current_time
+
+                annotate_frame(frame, fps=fps)  # Add annotations including FPS
+                await broadcast_counters()  # Send updated counts
+                _, jpeg = cv2.imencode(".jpg", frame)
+                yield (b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + jpeg.tobytes() + b"\r\n")
+            except Exception as e:
+                print(f"Error processing frame: {e}")
+                break
         cap.release()
 
     return StreamingResponse(generate_frames(), media_type="multipart/x-mixed-replace; boundary=frame")

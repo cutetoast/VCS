@@ -5,6 +5,7 @@ import axios from "axios";
 import { getAuth } from "firebase/auth";
 import { doc, updateDoc, setDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
+import React from "react";
 
 
 const Dashboard = () => {
@@ -18,7 +19,7 @@ const Dashboard = () => {
   const auth = getAuth();
 
   useEffect(() => {
-    const ws = new WebSocket("wss://vcs-aoef.onrender.com/ws");
+    const ws = new WebSocket("ws://localhost:8000/ws");
 
     ws.onopen = () => console.log("WebSocket connection established.");
 
@@ -39,6 +40,7 @@ const Dashboard = () => {
           });
         } catch (updateError: any) {
           if (updateError.code === "not-found") {
+           // If the document is not found, create a new one
             await setDoc(detectionsRef, {
               roadName,
               userId: user?.uid || "anonymous",
@@ -90,7 +92,7 @@ const Dashboard = () => {
         setIsProcessing(true);
 
         const response = await axios.post(
-          "https://vcs-aoef.onrender.com/uploadvideo/",
+          "http://0.0.0.0:8000/uploadvideo/",
           formData,
           {
             headers: { "Content-Type": "multipart/form-data" },
@@ -100,7 +102,7 @@ const Dashboard = () => {
         const { video_url } = response.data;
         if (!video_url) throw new Error("Invalid server response.");
         setVideoStreamUrl(
-          `https://vcs-aoef.onrender.com/showvideo?video_url=${encodeURIComponent(
+          `http://0.0.0.0:8000/showvideo?video_url=${encodeURIComponent(
             video_url
           )}`
         );
@@ -204,8 +206,7 @@ const Dashboard = () => {
             <h2 className="text-xl font-semibold mb-4">Detection Guide</h2>
             <div className="prose prose-sm text-gray-600">
               <p className="mb-4">
-                This system uses YOLOv11 Model to detect and classify vehicles in
-                real-time. Here's how to get started:
+                This system uses YOLOv11 Model. Here's how to get started:
               </p>
               <ol className="list-decimal list-inside space-y-2">
                 <li>Enter the road name for the current detection session</li>
