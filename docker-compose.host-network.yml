@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  backend:
+    network_mode: host
+    ports: []
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - ALLOW_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+
+  frontend:
+    network_mode: host
+    ports: []
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+      - VITE_WS_URL=ws://localhost:8000/ws 
