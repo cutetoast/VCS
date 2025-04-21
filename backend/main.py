@@ -14,14 +14,14 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
   #  allow_origins=["https://vcs-gray.vercel.app"],
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173", "http://frontend:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Globals
-model = YOLO("backend/yolo_model/yolo2.pt")  # Load YOLO model
+model = YOLO("yolo_model/yolo2.pt")  # Load YOLO model
 line_position = 400  # Position of the counting line
 confidence_threshold = 0.5  # Minimum confidence for detections
 class_names = ["Bus", "Car", "Motorcycle", "Truck", "Van"]  # Classes to detect
@@ -38,9 +38,7 @@ def reset_counters():
     global class_counters, tracked_vehicles
     class_counters = {name: 0 for name in class_names}
     tracked_vehicles = {}
-
-# Finds the closest tracked vehicles to the given centerpoint. tracking mechanism.
-# Ensures the same vehicle is not counted multiple times.
+    
 def get_closest_vehicles_id(centerpoint, max_distance=50):
     
     closest_id = None
@@ -129,11 +127,40 @@ async def websocket_endpoint(websocket: WebSocket):
    
     await websocket.accept()
     connected_websockets.add(websocket)
+    
+    # Send initial data
     try:
+        await websocket.send_json({
+            "status": "connected",
+            "classCounters": class_counters,
+            "heavyVehicles": class_counters["Bus"] + class_counters["Truck"],
+            "lightVehicles": class_counters["Car"] + class_counters["Motorcycle"] + class_counters["Van"],
+        })
+        
+        # Keep the connection alive with periodic pings
         while True:
+            # Wait for client messages or just keep connection alive
+            try:
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=30)
+                # If client sends a ping, respond with pong
+                if data == "ping":
+                    await websocket.send_text("pong")
+            except asyncio.TimeoutError:
+                # No message received, send a keepalive
+                try:
+                    await websocket.send_text("keepalive")
+                except WebSocketDisconnect:
+                    break
+            except WebSocketDisconnect:
+                break
             await asyncio.sleep(1)
     except WebSocketDisconnect:
-        connected_websockets.remove(websocket)
+        pass
+    except Exception as e:
+        print(f"WebSocket error: {e}")
+    finally:
+        if websocket in connected_websockets:
+            connected_websockets.remove(websocket)
 
 # Endpoint to handle video uploads.
 # Saves the video temporarily and returns the file path.
@@ -187,3 +214,13 @@ async def stream_video(video_url: str):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+# Add a health check endpoint
+@app.get("/health")
+async def health_check():
+    """Health check endpoint to verify the service is running"""
+    return {
+        "status": "ok",
+        "websocket_connections": len(connected_websockets),
+        "model_loaded": model is not None
+    }
