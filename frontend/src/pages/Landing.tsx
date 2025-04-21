@@ -198,7 +198,7 @@ const Landing: React.FC = () => {
       <footer className="border-t border-gray-200 py-8 mt-16">
         <div className="flex flex-col md:flex-row justify-between items-center">
           <p className="text-gray-600 mb-4 md:mb-0">
-            © 2024 Vehicle Counting System. All rights reserved.
+            © 2024 Muhammad Mokhtar. All rights reserved.
           </p>
           <nav className="flex gap-6">
             <Link
